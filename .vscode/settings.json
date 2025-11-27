@@ -1,0 +1,8 @@
+{
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "build",
+    "java.project.referencedLibraries": [
+        "Driver/mysql-connector-j-9.1.0.jar"
+    ],
+    "java.compile.nullAnalysis.mode": "automatic"
+}
