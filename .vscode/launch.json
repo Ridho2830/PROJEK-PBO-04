@@ -6,48 +6,28 @@
             "name": "Main",
             "request": "launch",
             "mainClass": "Main",
-            "projectName": "Project_d29d3e37"
-        },
-        {
-            "type": "java",
-            "name": "App",
-            "request": "launch",
-            "mainClass": "App",
-            "projectName": "Project_d29d3e37"
+            "classPaths": [
+                "${workspaceFolder}/build",
+                "${workspaceFolder}/driver/mysql-connector-j-9.1.0.jar"
+            ]
         },
         {
             "type": "java",
             "name": "LoginFrame",
             "request": "launch",
             "mainClass": "LoginFrame",
-            "projectName": "Project_d29d3e37"
+            "classPaths": [
+                "${workspaceFolder}/build",
+                "${workspaceFolder}/driver/mysql-connector-j-9.1.0.jar"
+            ]
         },
         {
             "type": "java",
             "name": "TestConnection",
             "request": "launch",
             "mainClass": "TestConnection",
-            "projectName": "Project_d29d3e37"
-        },
-        {
-            "type": "java",
-            "name": "FlappyBird - Main",
-            "request": "launch",
-            "mainClass": "Main",
-            "projectName": "FlappyBird",
             "classPaths": [
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/driver/mysql-connector-j-9.1.0.jar"
-            ]
-        },
-        {
-            "type": "java",
-            "name": "Test Database Connection",
-            "request": "launch",
-            "mainClass": "TestConnection",
-            "projectName": "FlappyBird",
-            "classPaths": [
-                "${workspaceFolder}/src",
+                "${workspaceFolder}/build",
                 "${workspaceFolder}/driver/mysql-connector-j-9.1.0.jar"
             ]
         }
