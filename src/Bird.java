@@ -21,7 +21,7 @@ public class Bird {
     }
 
     void jump() {
-        velocityY = -9;
+        velocityY = -6;
     }
 
     void draw(Graphics g) {
