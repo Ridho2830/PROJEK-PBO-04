@@ -56,9 +56,9 @@ public class MainMenu extends JFrame {
         birdLabel.setBounds(30, 160, 100, 25);
         mainPanel.add(birdLabel);
 
-        JButton yellowBtn = createColorButton("Yellow", 140, 160, Color.YELLOW, "yellow");
-        JButton redBtn = createColorButton("Red", 180, 160, Color.RED, "red");
-        JButton blueBtn = createColorButton("Blue", 220, 160, Color.BLUE, "blue");
+        JButton yellowBtn = createBirdButton(140, 160, "yellow");
+        JButton redBtn = createBirdButton(180, 160, "red");
+        JButton blueBtn = createBirdButton(220, 160, "blue");
         
         mainPanel.add(yellowBtn);
         mainPanel.add(redBtn);
@@ -97,14 +97,20 @@ public class MainMenu extends JFrame {
         setVisible(true);
     }
 
-    private JButton createColorButton(String text, int x, int y, Color color, String colorName) {
-        JButton button = new JButton(text);
+    private JButton createBirdButton(int x, int y, String colorName) {
+        JButton button = new JButton();
         button.setBounds(x, y, 60, 30);
-        button.setFont(new Font("Arial", Font.BOLD, 10));
-        button.setBackground(color);
-        button.setForeground(Color.WHITE);
         button.setBorder(BorderFactory.createRaisedBevelBorder());
         button.setFocusPainted(false);
+        
+        try {
+            String imagePath = "assets/sprites/" + colorName + "bird-midflap.png";
+            ImageIcon icon = new ImageIcon(imagePath);
+            Image img = icon.getImage().getScaledInstance(50, 25, Image.SCALE_SMOOTH);
+            button.setIcon(new ImageIcon(img));
+        } catch (Exception e) {
+            button.setText(colorName.toUpperCase());
+        }
         
         // Highlight current selection
         if (currentUser.getBirdColor().equals(colorName)) {
