@@ -1,239 +1,346 @@
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class LoginFrame extends JFrame {
-  private JTextField usernameField;
-  private JPasswordField passwordField;
-  private JButton loginButton;
-  private JButton registerButton;
-  private JLabel statusLabel;
 
-  public LoginFrame() {
-    setTitle("Flappy Bird - Login");
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    setSize(360, 640);
-    setLocationRelativeTo(null);
-    setResizable(false);
+    // Komponen UI
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JButton loginButton;
+    private JButton registerButton;
+    private JLabel statusLabel;
 
-    JPanel mainPanel = new JPanel() {
-      @Override
-      protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    // Aset Visual
+    private BufferedImage dayBackground;
+    private BufferedImage nightBackground;
+    private JPanel mainPanel;
+
+    // Variabel Animasi
+    private int bgOffsetX = 0;
+    private final AtomicBoolean isDay = new AtomicBoolean(true);
+    private final AtomicBoolean running = new AtomicBoolean(true);
+    private Thread parallaxThread;
+    private Thread dayNightThread;
+
+    // Audio
+    private static MusicPlayer music = new MusicPlayer();
+
+
+    public LoginFrame() {
+        setTitle("Flappy Bird - Login");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(360, 640);
+        setLocationRelativeTo(null);
+        setResizable(false);
+
+        // Muat gambar background
+        loadBackgroundImages();
+
+        // === MAIN PANEL (Custom Painting) ===
+        mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Pilih background berdasarkan waktu (AtomicBoolean)
+                BufferedImage bg = isDay.get() ? dayBackground : nightBackground;
+                int w = getWidth();
+                int h = getHeight();
+
+                if (bg != null) {
+                    // Seamless Parallax Logic (Menggambar 3 salinan agar looping mulus)
+                    g2d.drawImage(bg, bgOffsetX, 0, w, h, this);
+                    g2d.drawImage(bg, bgOffsetX + w, 0, w, h, this);
+                    g2d.drawImage(bg, bgOffsetX - w, 0, w, h, this);
+                } else {
+                    // Fallback jika gambar tidak ditemukan (Gradient)
+                    Color top = isDay.get() ? new Color(135, 206, 250) : new Color(15, 15, 40);
+                    Color bottom = isDay.get() ? new Color(70, 130, 180) : new Color(0, 0, 20);
+                    g2d.setPaint(new GradientPaint(0, 0, top, 0, h, bottom));
+                    g2d.fillRect(0, 0, w, h);
+                }
+                g2d.dispose();
+            }
+        };
+        mainPanel.setLayout(null);
+        add(mainPanel);
+
+        // === UI COMPONENTS ===
+        
+        // Judul Game
+        JLabel titleLabel = new JLabel("FLAPPY BIRD", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial Black", Font.BOLD, 28));
+        titleLabel.setForeground(new Color(255, 215, 0));
+        // Efek shadow sedehana pada text
+        titleLabel.setBorder(BorderFactory.createEmptyBorder()); 
+        titleLabel.setBounds(30, 80, 300, 50);
+        mainPanel.add(titleLabel);
+
+        // Panel Form
+        JPanel formPanel = createFormPanel();
+        mainPanel.add(formPanel);
+
+        // Panel Tombol
+        JPanel buttonPanel = createButtonPanel();
+        mainPanel.add(buttonPanel);
+
+        // Jalankan Thread Animasi
+        startThreads();
+
+        setVisible(true);
+        music.play("assets/audio/menu-music.wav", true);
+        
+    }
+
+    // --- SETUP VISUAL ---
+
+    private JPanel createFormPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Box Transparan
+                g2d.setColor(new Color(255, 255, 255, 50)); 
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                
+                // Border Putih Tipis
+                g2d.setColor(new Color(255, 255, 255, 150));
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 30, 30);
+            }
+        };
+        panel.setOpaque(false);
+        panel.setLayout(null);
+        panel.setBounds(30, 180, 300, 200);
+
+        JLabel userLabel = new JLabel("Username:");
+        userLabel.setForeground(Color.WHITE);
+        userLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        userLabel.setBounds(20, 20, 100, 25);
+        panel.add(userLabel);
+
+        usernameField = new JTextField();
+        usernameField.setBounds(20, 45, 260, 35);
+        usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
+        panel.add(usernameField);
+
+        JLabel passLabel = new JLabel("Password:");
+        passLabel.setForeground(Color.WHITE);
+        passLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        passLabel.setBounds(20, 90, 100, 25);
+        panel.add(passLabel);
+
+        passwordField = new JPasswordField();
+        passwordField.setBounds(20, 115, 260, 35);
+        passwordField.setFont(new Font("Arial", Font.PLAIN, 14));
+        panel.add(passwordField);
+
+        statusLabel = new JLabel("", SwingConstants.CENTER);
+        statusLabel.setForeground(new Color(255, 255, 100));
+        statusLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        statusLabel.setBounds(20, 160, 260, 25);
+        panel.add(statusLabel);
+
+        return panel;
+    }
+
+    private JPanel createButtonPanel() {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setLayout(null);
+        panel.setBounds(30, 420, 300, 100);
+
+        loginButton = new JButton("LOGIN");
+        loginButton.setBounds(0, 0, 140, 45);
+        loginButton.setBackground(new Color(76, 175, 80)); // Hijau
+        loginButton.setForeground(Color.WHITE);
+        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
+        loginButton.setFocusPainted(false);
+        loginButton.setBorder(BorderFactory.createRaisedBevelBorder());
+        loginButton.addActionListener(e -> handleLogin());
+        panel.add(loginButton);
+
+        registerButton = new JButton("REGISTER");
+        registerButton.setBounds(160, 0, 140, 45);
+        registerButton.setBackground(new Color(33, 150, 243)); // Biru
+        registerButton.setForeground(Color.WHITE);
+        registerButton.setFont(new Font("Arial", Font.BOLD, 14));
+        registerButton.setFocusPainted(false);
+        registerButton.setBorder(BorderFactory.createRaisedBevelBorder());
+        registerButton.addActionListener(e -> handleRegister());
+        panel.add(registerButton);
+
+        JButton exitButton = new JButton("EXIT");
+        exitButton.setBounds(60, 60, 180, 35);
+        exitButton.setBackground(new Color(244, 67, 54)); // Merah
+        exitButton.setForeground(Color.WHITE);
+        exitButton.setFont(new Font("Arial", Font.BOLD, 12));
+        exitButton.setFocusPainted(false);
+        exitButton.setBorder(BorderFactory.createRaisedBevelBorder());
+        exitButton.addActionListener(e -> {
+            stopBackgroundThreads();
+            System.exit(0);
+        });
+        panel.add(exitButton);
+
+        return panel;
+    }
+
+    private void loadBackgroundImages() {
         try {
-          Image backgroundImg = new ImageIcon("assets/sprites/background-day.png").getImage();
-          g.drawImage(backgroundImg, 0, 0, getWidth(), getHeight(), null);
+            dayBackground = ImageIO.read(new File("assets/sprites/background-day.png"));
+            nightBackground = ImageIO.read(new File("assets/sprites/background-night.png"));
         } catch (Exception e) {
-          Graphics2D g2d = (Graphics2D) g;
-          g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-          Color color1 = new Color(135, 206, 250);
-          Color color2 = new Color(70, 130, 180);
-          GradientPaint gradient = new GradientPaint(0, 0, color1, 0, getHeight(), color2);
-          g2d.setPaint(gradient);
-          g2d.fillRect(0, 0, getWidth(), getHeight());
+            System.out.println("Warning: Background image not found. Using gradient fallback.");
         }
-      }
-    };
-    mainPanel.setLayout(null);
-
-    // JLabel titleLabel = new JLabel("🐦 FLAPPY BIRD 🐦", SwingConstants.CENTER);
-    JLabel titleLabel = new JLabel("FLAPPY BIRD", SwingConstants.CENTER);
-    titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-    titleLabel.setForeground(new Color(255, 215, 0));
-    titleLabel.setBounds(30, 80, 300, 50);
-    mainPanel.add(titleLabel);
-
-    JPanel formPanel = new JPanel() {
-      @Override
-      protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setColor(new Color(255, 255, 255, 30));
-        g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-        g2d.setColor(new Color(255, 255, 255, 80));
-        g2d.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 20, 20);
-      }
-    };
-    formPanel.setOpaque(false);
-    formPanel.setLayout(null);
-    formPanel.setBounds(30, 180, 300, 200);
-
-    JLabel userLabel = new JLabel("Username:");
-    userLabel.setFont(new Font("Arial", Font.BOLD, 14));
-    userLabel.setForeground(Color.WHITE);
-    userLabel.setBounds(20, 20, 100, 25);
-    formPanel.add(userLabel);
-
-    usernameField = new JTextField();
-    usernameField.setBounds(20, 45, 260, 35);
-    usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
-    usernameField.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createRaisedBevelBorder(),
-        BorderFactory.createEmptyBorder(5, 10, 5, 10)));
-    formPanel.add(usernameField);
-
-    JLabel passLabel = new JLabel("Password:");
-    passLabel.setFont(new Font("Arial", Font.BOLD, 14));
-    passLabel.setForeground(Color.WHITE);
-    passLabel.setBounds(20, 90, 100, 25);
-    formPanel.add(passLabel);
-
-    passwordField = new JPasswordField();
-    passwordField.setBounds(20, 115, 260, 35);
-    passwordField.setFont(new Font("Arial", Font.PLAIN, 14));
-    passwordField.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createRaisedBevelBorder(),
-        BorderFactory.createEmptyBorder(5, 10, 5, 10)));
-    formPanel.add(passwordField);
-
-    statusLabel = new JLabel("", SwingConstants.CENTER);
-    statusLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-    statusLabel.setForeground(new Color(255, 255, 100));
-    statusLabel.setBounds(20, 160, 260, 25);
-    formPanel.add(statusLabel);
-
-    mainPanel.add(formPanel);
-
-    JPanel buttonPanel = new JPanel();
-    buttonPanel.setOpaque(false);
-    buttonPanel.setLayout(null);
-    buttonPanel.setBounds(30, 420, 300, 50);
-
-    int buttonWidth = 86;
-    int buttonHeight = 40;
-    int spacing = 4;
-
-    loginButton = new JButton("LOGIN");
-    loginButton.setBounds(0, 0, buttonWidth, buttonHeight);
-    loginButton.setFont(new Font("Arial", Font.BOLD, 12));
-    loginButton.setBackground(new Color(76, 175, 80));
-    loginButton.setForeground(Color.WHITE);
-    loginButton.setBorder(BorderFactory.createRaisedBevelBorder());
-    loginButton.setFocusPainted(false);
-    loginButton.addActionListener(e -> handleLogin());
-    buttonPanel.add(loginButton);
-
-    registerButton = new JButton("REGISTER");
-    registerButton.setBounds(buttonWidth + spacing, 0, buttonWidth, buttonHeight);
-    registerButton.setFont(new Font("Arial", Font.BOLD, 12));
-    registerButton.setBackground(new Color(33, 150, 243));
-    registerButton.setForeground(Color.WHITE);
-    registerButton.setBorder(BorderFactory.createRaisedBevelBorder());
-    registerButton.setFocusPainted(false);
-    registerButton.addActionListener(e -> handleRegister());
-    buttonPanel.add(registerButton);
-
-    JButton exitButton = new JButton("EXIT");
-    exitButton.setBounds((buttonWidth + spacing) * 2, 0, buttonWidth, buttonHeight);
-    exitButton.setFont(new Font("Arial", Font.BOLD, 12));
-    exitButton.setBackground(new Color(244, 67, 54));
-    exitButton.setForeground(Color.WHITE);
-    exitButton.setBorder(BorderFactory.createRaisedBevelBorder());
-    exitButton.setFocusPainted(false);
-    exitButton.addActionListener(e -> System.exit(0));
-    buttonPanel.add(exitButton);
-
-    mainPanel.add(buttonPanel);
-    add(mainPanel);
-    setVisible(true);
-  }
-
-  private void handleLogin() {
-    String username = usernameField.getText().trim();
-    String password = new String(passwordField.getPassword());
-
-    if (username.isEmpty() || password.isEmpty()) {
-      statusLabel.setText("⚠️ Username dan password tidak boleh kosong!");
-      statusLabel.setForeground(new Color(255, 100, 100));
-      return;
     }
 
-    try {
-      User user = User.login(username, password);
-      if (user != null) {
-        statusLabel.setText("✅ Login berhasil!");
-        statusLabel.setForeground(new Color(100, 255, 100));
+    // --- LOGIKA FUNGSIONAL (Dari kode lama) ---
 
-        // Open Main Menu instead of direct game
-        new MainMenu(user);
-        this.dispose();
-      } else {
-        statusLabel.setText("❌ Username atau password salah!");
-        statusLabel.setForeground(new Color(255, 100, 100));
-      }
-    } catch (Exception e) {
-      statusLabel.setText("Error koneksi database: " + e.getMessage());
-      statusLabel.setForeground(new Color(255, 100, 100));
-      e.printStackTrace();
-    }
-  }
+    private void handleLogin() {
+        String username = usernameField.getText().trim();
+        String password = new String(passwordField.getPassword());
 
-  private void handleRegister() {
-    String username = usernameField.getText().trim();
-    String password = new String(passwordField.getPassword());
+        if (username.isEmpty() || password.isEmpty()) {
+            statusLabel.setText("⚠️ Username dan password kosong!");
+            statusLabel.setForeground(new Color(255, 100, 100));
+            return;
+        }
 
-    if (username.isEmpty() || password.isEmpty()) {
-      statusLabel.setText("Silakan isi semua field!");
-      statusLabel.setForeground(new Color(255, 100, 100));
-      return;
-    }
+        try {
+            // Menggunakan Class User yang sudah work dari kode lama
+            User user = User.login(username, password);
+            
+            if (user != null) {
+                statusLabel.setText("✅ Login berhasil!");
+                statusLabel.setForeground(new Color(100, 255, 100));
 
-    if (username.length() < 3) {
-      statusLabel.setText("Username minimal 3 karakter!");
-      statusLabel.setForeground(new Color(255, 100, 100));
-      return;
-    }
+                // Matikan animasi sebelum pindah frame agar hemat resource
+                stopBackgroundThreads();
 
-    if (password.length() < 3) {
-      statusLabel.setText("Password minimal 3 karakter!");
-      statusLabel.setForeground(new Color(255, 100, 100));
-      return;
+                // Pindah ke MainMenu
+                SwingUtilities.invokeLater(() -> {
+                    new MainMenu(user); // Membuka menu utama
+                    this.dispose();     // Menutup login frame
+                });
+
+            } else {
+                statusLabel.setText("❌ Username atau password salah!");
+                statusLabel.setForeground(new Color(255, 100, 100));
+            }
+        } catch (Exception e) {
+            statusLabel.setText("Error DB: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    try {
-      if (User.isUsernameExists(username)) {
-        statusLabel.setText("Username sudah digunakan!");
-        statusLabel.setForeground(new Color(255, 100, 100));
-        return;
-      }
+    private void handleRegister() {
+        String username = usernameField.getText().trim();
+        String password = new String(passwordField.getPassword());
 
-      User newUser = new User(username, password);
-      if (newUser.register()) {
-        statusLabel.setText("Registrasi berhasil! Silakan login.");
-        statusLabel.setForeground(new Color(100, 255, 100));
-        clearFields();
-      } else {
-        statusLabel.setText("Registrasi gagal!");
-        statusLabel.setForeground(new Color(255, 100, 100));
-      }
-    } catch (Exception e) {
-      statusLabel.setText("Error koneksi database: " + e.getMessage());
-      statusLabel.setForeground(new Color(255, 100, 100));
-      e.printStackTrace();
+        if (username.isEmpty() || password.isEmpty()) {
+            statusLabel.setText("Silakan isi semua field!");
+            statusLabel.setForeground(new Color(255, 100, 100));
+            return;
+        }
+
+        if (username.length() < 3) {
+            statusLabel.setText("Username minimal 3 karakter!");
+            return;
+        }
+
+        if (password.length() < 3) {
+            statusLabel.setText("Password minimal 3 karakter!");
+            return;
+        }
+
+        try {
+            if (User.isUsernameExists(username)) {
+                statusLabel.setText("Username sudah digunakan!");
+                statusLabel.setForeground(new Color(255, 100, 100));
+                return;
+            }
+
+            User newUser = new User(username, password);
+            if (newUser.register()) {
+                statusLabel.setText("✅ Registrasi berhasil! Silakan login.");
+                statusLabel.setForeground(new Color(100, 255, 100));
+                usernameField.setText("");
+                passwordField.setText("");
+            } else {
+                statusLabel.setText("Registrasi gagal!");
+                statusLabel.setForeground(new Color(255, 100, 100));
+            }
+        } catch (Exception e) {
+            statusLabel.setText("Error DB: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
-  }
 
-  private void clearFields() {
-    usernameField.setText("");
-    passwordField.setText("");
-  }
+    // --- THREAD ANIMASI ---
 
-  private void openFlappyBirdGame() {
-    JFrame gameFrame = new JFrame("Flappy Bird");
-    gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    gameFrame.setSize(360, 640);
-    gameFrame.setLocationRelativeTo(null);
-    gameFrame.setResizable(false);
+    private void startThreads() {
+        running.set(true);
 
-    FlappyBird flappyBird = new FlappyBird();
-    gameFrame.add(flappyBird);
-    gameFrame.pack();
-    gameFrame.setVisible(true);
-    flappyBird.requestFocus();
-  }
+        // Thread 1: Geser Background (Parallax) ~60 FPS
+        parallaxThread = new Thread(() -> {
+            while (running.get()) {
+                try {
+                    Thread.sleep(16); 
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
 
-  public static void main(String[] args) {
-    SwingUtilities.invokeLater(() -> new LoginFrame());
-  }
+                bgOffsetX -= 1; // Kecepatan geser
+                // Reset jika gambar sudah lewat sepenuhnya
+                if (bgOffsetX <= -mainPanel.getWidth()) {
+                    bgOffsetX = 0;
+                }
+
+                SwingUtilities.invokeLater(mainPanel::repaint);
+            }
+        }, "Parallax-Thread");
+
+        // Thread 2: Ganti Siang/Malam setiap 10 detik
+        dayNightThread = new Thread(() -> {
+            while (running.get()) {
+                try {
+                    Thread.sleep(10000); // 10 Detik
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                isDay.set(!isDay.get()); // Toggle true/false
+            }
+        }, "DayNight-Thread");
+
+        parallaxThread.start();
+        dayNightThread.start();
+    }
+
+    private void stopBackgroundThreads() {
+        running.set(false);
+        if (parallaxThread != null) parallaxThread.interrupt();
+        if (dayNightThread != null) dayNightThread.interrupt();
+    }
+
+    @Override
+    public void dispose() {
+        stopBackgroundThreads();
+        super.dispose();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new LoginFrame());
+    }
 }

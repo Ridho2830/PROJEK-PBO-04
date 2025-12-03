@@ -5,7 +5,7 @@ public class DatabaseConnection {
     private static final String DATABASE_NAME = "db_flappy_bird";
     private static final String FULL_URL = SERVER_URL + DATABASE_NAME;
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "kosongin";
+    private static final String PASSWORD = "";
     
     static {
         try {
