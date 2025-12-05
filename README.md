@@ -347,32 +347,32 @@ Pesan error yang informatif ketika kredensial login tidak valid, membantu penggu
 ### Register Berhasil
 ![Register Berhasil](screenshots/register%20berhasil.png)
 
-Konfirmasi sukses setelah registrasi pengguna baru berhasil disimpan ke database, dengan transisi smooth ke halaman login.
+Konfirmasi sukses setelah registrasi pengguna baru berhasil disimpan ke database, yang kemudian meminta user untuk login.
 
 ### Main Menu
 ![Main Menu](screenshots/main%20menu.png)
 
-Menu utama dengan parallax scrolling background dan berbagai opsi customization. Interface yang intuitif dengan tombol navigasi yang jelas.
+Menu utama dengan parallax scrolling background yang terdiri dari 3 opsi menu dan berbagai opsi customization. Interface yang intuitif dengan tombol navigasi yang jelas.
 
 ### Main Menu (Dark Mode)
 ![Main Menu Dark Mode](screenshots/main%20menu%20(dark%20mode).png)
 
 Variasi tema gelap dari main menu yang menunjukkan fleksibilitas sistem customization visual berdasarkan preferensi pengguna.
 
-### In Game
+### Pre-Game
 ![In Game](screenshots/in%20game.png)
 
-Tampilan gameplay dengan physics simulation yang realistis, animasi burung yang smooth, dan UI scoring yang minimalis namun informatif.
+Tampilan gameplay saat dimulai dengan teks informatif untuk menekan tombol spasi pada keyboard untuk memulai game.
 
-### In Game 2
+### In Game
 ![In Game 2](screenshots/in%20game%202.png)
 
-Gameplay dengan skor yang lebih tinggi, menunjukkan sistem collision detection dan spawning pipa yang berfungsi dengan baik.
+Gameplay pada saat game berlangsung, menggunakan aset yang ada beserta tambahan audio untuk latar belakang lebih seru dengan scoring real-time.
 
 ### Game Over
 ![Game Over](screenshots/game%20over.png)
 
-Screen game over dengan opsi restart dan navigasi kembali ke menu utama. Sistem otomatis mengupdate high score ke database jika diperlukan.
+Screen game over dengan opsi restart dan navigasi dengan tombol `M` kembali ke menu utama. Sistem otomatis mengupdate high score ke database jika diperlukan.
 
 ### Leaderboard
 ![Leaderboard](screenshots/leaderboard.png)
