@@ -57,7 +57,7 @@ public class LeaderboardFrame extends JFrame {
         };
         mainPanel.setLayout(null);
         add(mainPanel);
-
+        
         // === UI ELEMENTS ===
 
         // Judul dengan Shadow Effect

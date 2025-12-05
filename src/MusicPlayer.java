@@ -2,7 +2,7 @@ import java.io.File;
 import javax.sound.sampled.*;
 
 public class MusicPlayer {
-    // UBAH JADI STATIC (Milik Bersama)
+
     private static Clip clip; 
 
     public void play(String filepath, boolean loop) {

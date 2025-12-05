@@ -35,6 +35,7 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     int pipeWidth = 64;
     int pipeHeight = 512;
 
+    // List Pipa 
     ArrayList<Pipe> pipes;
     Random random = new Random();
 
@@ -139,12 +140,11 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         int randomPipeY = (int) (pipeY - pipeHeight/4 - Math.random()*(pipeHeight/2));
         int openingSpace = boardHeight/4;
 
-        Pipe topPipe = new Pipe(topPipeImg, true);
-        topPipe.y = randomPipeY;
+        Pipe topPipe = new Pipe(boardWidth, randomPipeY, pipeWidth, pipeHeight, topPipeImg, true);
         pipes.add(topPipe);
 
-        Pipe bottomPipe = new Pipe(bottomPipeImg, false);
-        bottomPipe.y = topPipe.y + pipeHeight + openingSpace;
+        // Pipe Bawah
+        Pipe bottomPipe = new Pipe(boardWidth, topPipe.getY() + pipeHeight + openingSpace, pipeWidth, pipeHeight, bottomPipeImg, false);
         pipes.add(bottomPipe);
 
         playSound("swoosh.wav");
@@ -170,7 +170,7 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         g2d.drawImage(currentBirdImg, -birdWidth/2, -birdHeight/2, birdWidth, birdHeight, null);
         g2d.setTransform(old);
 
-        // 3. Pipa
+        // 3. Pipa (Memanggil method draw dari GameObject/Pipe)
         for (Pipe pipe : pipes) {
             pipe.draw(g);
         }
@@ -235,24 +235,17 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         g.drawString("BEST", labelX, boardY + 85);
 
         // 4. Angka Score (Pakai Gambar Angka)
-        // Score (di kanan, sejajar label SCORE)
         drawScoreAt(g, (int)score, valueX, boardY + 20);
 
-        // Best Score (di kanan, sejajar label BEST)
         int best = currentUser != null ? currentUser.getHighScore() : 0;
         drawScoreAt(g, best, valueX, boardY + 65);
 
-        // --- BAGIAN MEDALI DIHAPUS ---
-
-        // 5. Tombol Instruksi (Tanpa Box Background)
+        // 5. Tombol Instruksi
         g.setFont(new Font("Arial", Font.BOLD, 14));
-
-        // Efek Shadow Hitam
         g.setColor(Color.BLACK);
         drawCenteredString(g, "Press SPACE to Restart", boardWidth/2 + 1, boardHeight/2 + 61);
         drawCenteredString(g, "Press M for Menu", boardWidth/2 + 1, boardHeight/2 + 86);
 
-        // Teks Putih
         g.setColor(Color.WHITE);
         drawCenteredString(g, "Press SPACE to Restart", boardWidth/2, boardHeight/2 + 60);
         drawCenteredString(g, "Press M for Menu", boardWidth/2, boardHeight/2 + 85);
@@ -264,8 +257,6 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     }
 
     // === HELPER DRAWING METHODS ===
-
-    // Gambar score di tengah (saat main)
     private void drawScoreCentered(Graphics g, int score, int y) {
         String scoreStr = String.valueOf(score);
         int digitWidth = 24;
@@ -280,15 +271,13 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // Gambar score RATA KANAN (untuk papan skor)
     private void drawScoreAt(Graphics g, int score, int endX, int y) {
         String scoreStr = String.valueOf(score);
-        int digitWidth = 16; // Lebar per digit
-        int digitHeight = 24; // Tinggi per digit
+        int digitWidth = 16; 
+        int digitHeight = 24; 
 
         for (int i = scoreStr.length() - 1; i >= 0; i--) {
             int digit = Character.getNumericValue(scoreStr.charAt(i));
-            // Hitung posisi X dari kanan ke kiri
             int x = endX - ((scoreStr.length() - i) * digitWidth);
             if (numberImgs[digit] != null) {
                 g.drawImage(numberImgs[digit], x, y, digitWidth, digitHeight, null);
@@ -306,19 +295,20 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     public void move() {
         if (!gameStarted) return;
 
-        // 1. Gravitasi Burung (Selalu aktif biar jatuh realistik)
+        // 1. Gravitasi Burung
         velocityY += gravity;
         birdY += velocityY;
         birdY = Math.max(birdY, 0);
 
         // 2. Loop Pipa
         for (Pipe pipe : pipes) {
-
-            // JIKA BELUM GAME OVER, PIPA GERAK & SKOR NAMBAH
             if (!gameOver) {
-                pipe.x -= 3;
+                // pipe.x dan pipe.width diakses melalui Getter (atau protected field) dari GameObject
+                // Karena Pipe extends GameObject, dia punya atribut x dan width
+                pipe.x -= 3; // Mengakses atribut x langsung (karena protected di GameObject)
 
                 // Cek Skor
+                // PERBAIKAN: getX() dan getWidth() bisa dipakai jika field diprivate
                 if (!pipe.passed && birdX > pipe.x + pipe.width) {
                     score += 0.5;
                     pipe.passed = true;
@@ -345,16 +335,16 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     }
 
     boolean collision(Pipe p) {
+        // Menggunakan method getBounds() dari Abstract Class GameObject
         Rectangle birdRect = new Rectangle(birdX, (int)birdY, birdWidth, birdHeight);
-        Rectangle pipeRect = new Rectangle(p.x, p.y, p.width, p.height);
-        return birdRect.intersects(pipeRect);
+        return birdRect.intersects(p.getBounds());
     }
 
     private void triggerGameOver() {
         if (gameOver) return;
         gameOver = true;
 
-        stopBackgroundMusic(); // STOP musik
+        stopBackgroundMusic(); 
         playSound("hit.wav");
         playSound("die.wav");
         placePipeTimer.stop();
@@ -369,7 +359,6 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-
             if (gameOver) {
                 // RESTART GAME
                 birdY = boardHeight / 2;
@@ -399,11 +388,9 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
                 playSound("wing.wav");
             }
         }
-
         else if (e.getKeyCode() == KeyEvent.VK_M && gameOver) {
             // BACK TO MENU
             stopBackgroundMusic();
-
             if (currentUser != null) {
                 new MainMenu(currentUser);
                 JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
@@ -426,27 +413,7 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
             }
         } catch (Exception e) {}
     }
-
-    class Pipe {
-        int x = boardWidth;
-        int y = 0;
-        int width = 64;
-        int height = 512;
-        Image img;
-        boolean passed = false;
-        boolean isTop;
-
-        Pipe(Image img, boolean isTop) {
-            this.img = img;
-            this.isTop = isTop;
-        }
-
-        void draw(Graphics g) {
-            if (isTop) {
-                g.drawImage(img, x, y + height, width, -height, null);
-            } else {
-                g.drawImage(img, x, y, width, height, null);
-            }
-        }
-    }
+    
+    // !!! CLASS PIPE SUDAH DIHAPUS DARI SINI !!!
+    // Karena sudah ada di file Pipe.java
 }
