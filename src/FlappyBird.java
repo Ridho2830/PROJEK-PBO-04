@@ -11,7 +11,8 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     int boardHeight = 640;
 
     // Aset Gambar
-    Image backgroundImg;
+    Image imgDay, imgNight; // Aset background siang & malam disimpan di memori
+    Image currentBgImg;     // Background yang sedang aktif
     Image[] birdImgs = new Image[3];
     Image[] numberImgs = new Image[10];
     Image topPipeImg;
@@ -35,7 +36,16 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     int pipeWidth = 64;
     int pipeHeight = 512;
 
-    // List Pipa 
+    // --- LOGIKA BACKGROUND BERGERAK ---
+    int backgroundX = 0;    // Posisi X background
+    int bgSpeed = 1;        // Kecepatan gerak background (lebih lambat dari pipa biar estetik)
+    // ----------------------------------
+
+    // --- LOGIKA KECEPATAN BERTINGKAT ---
+    int baseSpeed = 3;      
+    int currentSpeed = 3;   
+    // -----------------------------------
+
     ArrayList<Pipe> pipes;
     Random random = new Random();
 
@@ -66,10 +76,8 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
 
         pipes = new ArrayList<>();
 
-        // Timer untuk spawn pipa (1.5 detik sekali)
         placePipeTimer = new Timer(1500, e -> placePipes());
 
-        // Timer untuk animasi sayap burung
         animationTimer = new Timer(150, new ActionListener() {
             int frame = 0;
             @Override
@@ -81,7 +89,6 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
             }
         });
 
-        // Game Loop utama (60 FPS)
         gameLoop = new Timer(1000/60, this);
         gameLoop.start();
         animationTimer.start();
@@ -89,11 +96,15 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
 
     private void loadAssets() {
         try {
-            String bgMode = currentUser != null ? currentUser.getBackgroundMode() : "day";
+            // Load KEDUA background (Siang dan Malam)
+            imgDay = new ImageIcon("assets/sprites/background-day.png").getImage();
+            imgNight = new ImageIcon("assets/sprites/background-night.png").getImage();
+
+            // Set background awal sesuai preferensi user
+            String initialMode = currentUser != null ? currentUser.getBackgroundMode() : "day";
+            currentBgImg = initialMode.equals("day") ? imgDay : imgNight;
+
             String birdColor = currentUser != null ? currentUser.getBirdColor() : "yellow";
-
-            backgroundImg = new ImageIcon("assets/sprites/background-" + bgMode + ".png").getImage();
-
             birdImgs[0] = new ImageIcon("assets/sprites/" + birdColor + "bird-upflap.png").getImage();
             birdImgs[1] = new ImageIcon("assets/sprites/" + birdColor + "bird-midflap.png").getImage();
             birdImgs[2] = new ImageIcon("assets/sprites/" + birdColor + "bird-downflap.png").getImage();
@@ -111,7 +122,6 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // === BGM Functions ===
     private void playBackgroundMusic(String filename) {
         try {
             File file = new File("assets/audio/" + filename);
@@ -120,7 +130,7 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
             AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
             bgmClip = AudioSystem.getClip();
             bgmClip.open(audioStream);
-            bgmClip.loop(Clip.LOOP_CONTINUOUSLY); // Looping
+            bgmClip.loop(Clip.LOOP_CONTINUOUSLY); 
             bgmClip.start();
         } catch (Exception e) {
             System.out.println("BGM error: " + e.getMessage());
@@ -143,7 +153,6 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         Pipe topPipe = new Pipe(boardWidth, randomPipeY, pipeWidth, pipeHeight, topPipeImg, true);
         pipes.add(topPipe);
 
-        // Pipe Bawah
         Pipe bottomPipe = new Pipe(boardWidth, topPipe.getY() + pipeHeight + openingSpace, pipeWidth, pipeHeight, bottomPipeImg, false);
         pipes.add(bottomPipe);
 
@@ -157,8 +166,11 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
     }
 
     public void draw(Graphics g) {
-        // 1. Background
-        g.drawImage(backgroundImg, 0, 0, boardWidth, boardHeight, null);
+        // 1. Background Bergerak (Draw 2 image untuk looping)
+        // Gambar 1 (Posisi saat ini)
+        g.drawImage(currentBgImg, backgroundX, 0, boardWidth, boardHeight, null);
+        // Gambar 2 (Posisi setelah gambar 1 habis)
+        g.drawImage(currentBgImg, backgroundX + boardWidth, 0, boardWidth, boardHeight, null);
 
         // 2. Burung (dengan Rotasi)
         Graphics2D g2d = (Graphics2D) g;
@@ -170,7 +182,7 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         g2d.drawImage(currentBirdImg, -birdWidth/2, -birdHeight/2, birdWidth, birdHeight, null);
         g2d.setTransform(old);
 
-        // 3. Pipa (Memanggil method draw dari GameObject/Pipe)
+        // 3. Pipa
         for (Pipe pipe : pipes) {
             pipe.draw(g);
         }
@@ -186,12 +198,10 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
             drawGetReadyScreen(g);
         }
         else {
-            // Score saat main (di tengah atas)
             drawScoreCentered(g, (int) score, 80);
         }
     }
 
-    // === LAYAR GET READY ===
     private void drawGetReadyScreen(Graphics g) {
         g.setFont(new Font("Arial", Font.BOLD, 28));
         g.setColor(Color.BLACK);
@@ -203,44 +213,36 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         drawCenteredString(g, "Press SPACE to start", boardWidth/2, boardHeight/2);
     }
 
-    // === LAYAR GAME OVER (DENGAN PAPAN SKOR MANUAL) ===
     private void drawGameOverScreen(Graphics g) {
-        // 1. Gambar Judul "Game Over"
         g.drawImage(gameOverImg, boardWidth/2 - 96, boardHeight/2 - 180, null);
 
-        // 2. Gambar KOTAK SKOR Manual
         int boardW = 226;
         int boardH = 114;
         int boardX = boardWidth/2 - (boardW/2);
         int boardY = boardHeight/2 - 90;
 
-        // Warna Dasar Papan (Krem)
         g.setColor(new Color(222, 216, 149));
         g.fillRoundRect(boardX, boardY, boardW, boardH, 10, 10);
 
-        // Garis Pinggir Papan (Coklat Tua)
         Graphics2D g2dBoard = (Graphics2D) g;
         g2dBoard.setColor(new Color(84, 56, 71));
         g2dBoard.setStroke(new BasicStroke(3));
         g2dBoard.drawRoundRect(boardX, boardY, boardW, boardH, 10, 10);
 
-        // 3. Label Teks (SCORE & BEST) - Diatur ulang posisinya
-        g.setColor(new Color(232, 97, 1)); // Warna Oranye Bata
-        g.setFont(new Font("Arial", Font.BOLD, 16)); // Font sedikit lebih besar
+        g.setColor(new Color(232, 97, 1)); 
+        g.setFont(new Font("Arial", Font.BOLD, 16)); 
 
-        int labelX = boardX + 20; // Posisi kiri untuk label
-        int valueX = boardX + boardW - 25; // Posisi kanan untuk angka
+        int labelX = boardX + 20; 
+        int valueX = boardX + boardW - 25; 
 
         g.drawString("SCORE", labelX, boardY + 40);
         g.drawString("BEST", labelX, boardY + 85);
 
-        // 4. Angka Score (Pakai Gambar Angka)
         drawScoreAt(g, (int)score, valueX, boardY + 20);
 
         int best = currentUser != null ? currentUser.getHighScore() : 0;
         drawScoreAt(g, best, valueX, boardY + 65);
 
-        // 5. Tombol Instruksi
         g.setFont(new Font("Arial", Font.BOLD, 14));
         g.setColor(Color.BLACK);
         drawCenteredString(g, "Press SPACE to Restart", boardWidth/2 + 1, boardHeight/2 + 61);
@@ -250,13 +252,11 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         drawCenteredString(g, "Press SPACE to Restart", boardWidth/2, boardHeight/2 + 60);
         drawCenteredString(g, "Press M for Menu", boardWidth/2, boardHeight/2 + 85);
 
-        // Simpan Highscore
         if (currentUser != null) {
             currentUser.updateHighScore((int) score);
         }
     }
 
-    // === HELPER DRAWING METHODS ===
     private void drawScoreCentered(Graphics g, int score, int y) {
         String scoreStr = String.valueOf(score);
         int digitWidth = 24;
@@ -291,51 +291,63 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
         g.drawString(text, xCentered, y);
     }
 
-    // === GAME PHYSICS & LOGIC ===
     public void move() {
         if (!gameStarted) return;
 
-        // 1. Gravitasi Burung
+        // === 1. UPDATE KECEPATAN (Progressive Difficulty) ===
+        currentSpeed = baseSpeed + (int)(score / 20);
+        currentSpeed = Math.min(10, currentSpeed);
+
+        // === 2. UPDATE BACKGROUND (Bergerak & Berubah) ===
+        // Geser background ke kiri
+        backgroundX -= bgSpeed; 
+        // Jika gambar pertama sudah lewat sepenuhnya, reset ke 0
+        if (backgroundX <= -boardWidth) {
+            backgroundX = 0;
+        }
+
+        // Ganti Background Siang/Malam setiap 30 Poin
+        // Logika: 0-29 (Siang), 30-59 (Malam), 60-89 (Siang), dst.
+        if (((int)score / 30) % 2 == 0) {
+            currentBgImg = imgDay;   // Genap = Siang
+        } else {
+            currentBgImg = imgNight; // Ganjil = Malam
+        }
+        // =================================================
+
+        // 3. Gravitasi Burung
         velocityY += gravity;
         birdY += velocityY;
         birdY = Math.max(birdY, 0);
 
-        // 2. Loop Pipa
+        // 4. Loop Pipa
         for (Pipe pipe : pipes) {
             if (!gameOver) {
-                // pipe.x dan pipe.width diakses melalui Getter (atau protected field) dari GameObject
-                // Karena Pipe extends GameObject, dia punya atribut x dan width
-                pipe.x -= 3; // Mengakses atribut x langsung (karena protected di GameObject)
+                pipe.x -= currentSpeed; 
 
-                // Cek Skor
-                // PERBAIKAN: getX() dan getWidth() bisa dipakai jika field diprivate
                 if (!pipe.passed && birdX > pipe.x + pipe.width) {
                     score += 0.5;
                     pipe.passed = true;
                     if (score % 1 == 0) playSound("point.wav");
                 }
 
-                // Cek Tabrakan
                 if (collision(pipe)) {
                     triggerGameOver();
                 }
             }
         }
 
-        // Hapus pipa yang lewat
         if (!gameOver && pipes.size() > 0 && pipes.get(0).x + pipeWidth < 0) {
             pipes.remove(0);
             pipes.remove(0);
         }
 
-        // Cek Jatuh ke Tanah
         if (birdY > boardHeight - 112 - birdHeight) {
             triggerGameOver();
         }
     }
 
     boolean collision(Pipe p) {
-        // Menggunakan method getBounds() dari Abstract Class GameObject
         Rectangle birdRect = new Rectangle(birdX, (int)birdY, birdWidth, birdHeight);
         return birdRect.intersects(p.getBounds());
     }
@@ -367,12 +379,19 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
                 gameOver = false;
                 gameStarted = false;
                 score = 0;
+                
+                // Reset Logika Tambahan
+                currentSpeed = baseSpeed;
+                backgroundX = 0; 
+                // Kembalikan background ke mode user awal
+                String mode = currentUser != null ? currentUser.getBackgroundMode() : "day";
+                currentBgImg = mode.equals("day") ? imgDay : imgNight;
+
                 placePipeTimer.stop();
                 stopBackgroundMusic();
                 currentBirdImg = birdImgs[1];
             }
             else if (!gameStarted) {
-                // START GAME
                 gameStarted = true;
                 placePipeTimer.start();
                 stopBackgroundMusic();
@@ -383,13 +402,11 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
                 playSound("wing.wav");
             }
             else {
-                // FLAP
                 velocityY = jumpStrength;
                 playSound("wing.wav");
             }
         }
         else if (e.getKeyCode() == KeyEvent.VK_M && gameOver) {
-            // BACK TO MENU
             stopBackgroundMusic();
             if (currentUser != null) {
                 new MainMenu(currentUser);
@@ -413,7 +430,4 @@ public class FlappyBird extends JPanel implements ActionListener, KeyListener {
             }
         } catch (Exception e) {}
     }
-    
-    // !!! CLASS PIPE SUDAH DIHAPUS DARI SINI !!!
-    // Karena sudah ada di file Pipe.java
 }
